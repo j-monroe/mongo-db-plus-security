@@ -21,10 +21,8 @@ ExecStartPre=/bin/bash -c "/usr/bin/docker pull mongo:2.6"
 ExecStartPre=-/bin/bash -c "/usr/bin/docker rm -f mongodb"
 ExecStart=/bin/bash -c "\
           set -e; \
-          #REPLICA_NAME=$(etcdctl get /mongo/replica/name 2>/dev/null || true); \
           REPLICA_NAME=$($CURL --cacert ${KEY_CA_CERT} --cert ${KEY_CERT} --key ${KEY_KEY} -L https://${LEADER_IP}:4001/v2/keys/mongo/replica/name -X GET 2>/dev/null || true); \
           REPLICA_KEY=$($CURL --cacert ${KEY_CA_CERT} --cert ${KEY_CERT} --key ${KEY_KEY} -L https://${LEADER_IP}:4001/v2/keys/mongo/replica/key -X GET 2>/dev/null || true); \
-          #REPLICA_KEY=$(etcdctl get /mongo/replica/key 2>/dev/null || true); \
           MONGO_ARGS='--smallfiles'; \
           if [ -n \"$REPLICA_KEY\" ]; \
           then \
@@ -51,9 +49,7 @@ ExecStart=/bin/bash -c "\
 ExecStartPost=/bin/bash -c "\
           set -e; \
           $CURL --cacert ${KEY_CA_CERT} --cert ${KEY_CERT} --key ${KEY_KEY} -L https://${FOLLWER_IP}:4001/v2/keys/mongo/replica/nodes/$COREOS_PRIVATE_IPV4/port -X PUT -d value=27017; \
-        # /usr/bin/etcdctl set /mongo/replica/nodes/$COREOS_PRIVATE_IPV4/port 27017; \
          $CURL --cacert ${KEY_CA_CERT} --cert ${KEY_CERT} --key ${KEY_KEY} -L https://${FOLLWER_IP}:4001/v2/keys/mongo/replica/nodes/$COREOS_PRIVATE_IPV4/status -X PUT -d value=on; \
-         # /usr/bin/etcdctl set /mongo/replica/nodes/$COREOS_PRIVATE_IPV4/status on; \
           REPLICA_KEY=$($CURL --cacert ${KEY_CA_CERT} --cert ${KEY_CERT} --key ${KEY_KEY} -L https://${LEADER_IP}:4001/v2/keys/mongo/replica/key -X GET 2>/dev/null || true); \
           if [ -n \"$REPLICA_KEY\" ]; then exit 0; fi; \
           if [ \"$INSTANCE\" -ne \"1\" ]; then exit 0; fi; \
@@ -86,7 +82,7 @@ ExecStartPost=/bin/bash -c "\
                                     pwd:'$SITE_ROOT_PWD', \
                                     roles: [{role:'root', db:'admin'}]});\"; \
           \
-          etcdctl set /mongo/replica/key \"$(openssl rand -base64 741)\"; \
+          $CURL --cacert ${KEY_CA_CERT} --cert ${KEY_CERT} --key ${KEY_KEY} -L https://${FOLLWER_IP}:4001/v2/keys/mongo/replica/key -X PUT -d value=\"$(openssl rand -base64 741)\"; \
           echo restarting now... ; \
           exit 1"
 ExecStop=/bin/bash -c -v "\
